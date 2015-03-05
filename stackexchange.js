@@ -38,7 +38,7 @@ StackExchange.prototype = {
     constructor: StackExchange,
 
     setTagList: function(tags) {
-        this._tags = tags;
+        this._tags = tags || [];
     },
     
     setTimeout: function(timeout) { 
@@ -68,7 +68,7 @@ StackExchange.prototype = {
     },
 
     loadNewQuestions: function(callback) {
-this._log('Loading new questions...');
+this._log('Loading new questions from the site...');
 
         let fromDate = this._getFromDateParameter();
 
@@ -79,6 +79,7 @@ this._log('Loading new questions...');
         // Empty the questions array
         this._questions = [];
 
+        // Reset the number of loaded tags
         this._numLoadedTags = 0;
 
         // Hold the callback to execute after the reading is done 
@@ -120,19 +121,22 @@ this._log('url: ' + url);
             
             // "questions" contains a document with one element "items" which is 
             // an array of subdocuments 
-this._log('The answer is: ' + questions);
-            this._questions.concat(questions.items);
+            for (let i = 0; i < questions.items.length; i++) {
+                this._questions.push(questions.items[i]);
+            }
 
             this._numLoadedTags++;
             
+            
             if (this._numLoadedTags >= this._tags.length) {
+            
                 // If the last tag has been harvested, then sort the array 
                 // and merge those questions that are the same            
 
-                this._questions = this._prepareQuestions(this._questions);
+                let questions = this._prepareQuestions(this._questions);
 
                 // Last, call the callback
-                this._callback(this._questions);
+                this._callback(questions);
             }
         } catch (e) {
             this._onError('Retrieving questions data failed: ' + e);
@@ -141,7 +145,7 @@ this._log('The answer is: ' + questions);
 
     _prepareQuestions: function(questions) {
         // Merge those questions that match several tags
-        // ( This fancy reduce stuff is O(n^2)  ¬ ¬ )
+        // ( This fancy reduce stuff is O(n^2)
         questions = questions.reduce(function(prev, cur) {
             // Iterate over "prev" to see if there are repeated questions
             let size = prev.length;
@@ -159,7 +163,7 @@ this._log('The answer is: ' + questions);
         }, []);
 
         return questions.sort(function(question1, question2) { 
-            return question1.creation_date < question2.creation_date;
+            return question1.creation_date > question2.creation_date;
         });
     }
 }
