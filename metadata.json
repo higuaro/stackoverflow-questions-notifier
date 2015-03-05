@@ -1,0 +1,5 @@
+{
+    "uuid": "stackoverflow-tag-notifier@higuaro",
+    "name": "Stackoverflow Tag Notifier",
+    "description": "Checks stackoverflow site to see if new questions have been posted under a particular tag and generates a notification"
+}
