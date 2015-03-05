@@ -1,26 +1,28 @@
 const Soup = imports.gi.Soup;
 
+const USER_AGET = 'cinnamon';
 const API_ROOT = 'https://api.stackexchange.com/2.2/';
-                  
+const MINUTE  = 60000;
+
 function StackExchange(options) {
+    // By default, turn logging off 
     this._debugEnabled = options.debug || false;
+    
+    // The stack exchange api object is general, the "site" parameter will
+    // dictates which of the stackexchange sites to use 
     this._site = options.site;
-    this._userAgent = 'cinnamon';
 
-this._log('setting tag list: ' + options.tags);
-
+    // If given in the options, set the tag list 
     this.setTagList(options.tags);
 
     this._questions = [];
 
-    this._lastCheck = new Date();
-
     try {
         this._httpSession = new Soup.SessionAsync();
-        this._httpSession.accept_language = 'en';
-        this._httpSession.user_agent = this._userAgent;
+        this._httpSession.user_agent = USER_AGET;
     } catch (e) {
-        throw 'StackExchange: Failed creating SessionAsync\nDetails: ' + e;
+        this
+        throw 'StackExchange: Failed creating SessionAsync. Details: ' + e;
     }
 
     try {
@@ -31,41 +33,50 @@ this._log('setting tag list: ' + options.tags);
     }
 }
 
+
 StackExchange.prototype = {
     constructor: StackExchange,
 
-    _log: function() {
-        if (this._debugEnabled) { 
-            global.log.apply(global, arguments);
-        }
-    },
-
-    _parseJsonResponse: function(response) {
-        var rawJSON = response.response_body.data;
-        return JSON.parse(rawJSON);
-    },
-
-
     setTagList: function(tags) {
-this._log('setting tags = ' + tags);
         this._tags = tags;
     },
     
     setTimeout: function(timeout) { 
         this._timeout = timeout;
-    }
+    },
+
+    _log: function() {
+        if (this._debugEnabled) { 
+            for (let i = 0; i < arguments.length; i++) {
+                global.log(arguments[i]);
+            }
+        }
+    },
+
+    _parseJsonResponse: function(message) {
+        var rawJSON = message.response_body.data;
+        return JSON.parse(rawJSON);
+    },
+    
+    _getFromDateParameter: function() {
+        // We want all the questions that have been posted since 
+        // the current time minus "timeout" minutes
+        let time = new Date() - (this._timeout * MINUTE);
+        
+        // Drop the milliseconds part from the unix time 
+        return Math.round(time / 1000);
+    },
 
     loadNewQuestions: function(callback) {
 this._log('Loading new questions...');
-this._log('this._lastCheck.getTime()...' + this._lastCheck.getTime());
 
-        let time = this._lastCheck.getTime() 
-        let fromDate = Math.round(( ) / 1000);
+        let fromDate = this._getFromDateParameter();
+
         let questionUrl = API_ROOT + 'questions?order=desc&sort=creation&site=stackoverflow&fromdate=' + fromDate;
 
         let numTags = this._tags.length;
 
-        // Empty the questions array 
+        // Empty the questions array
         this._questions = [];
 
         this._numLoadedTags = 0;
@@ -89,39 +100,27 @@ this._log('url: ' + url);
         }
     },
 
+    _onError: function(msg) {
+        global.logError(msg);
+    },
+
     _onResponse: function(session, message) {
-this._log('Got a response!');
-this._log('Response status_code: ' + message.status_code);
         if (message.status_code != 200) {
             // ignore error codes 6 and 7 and 401
             if (message.status_code != 401 && message.status_code != 7 && message.status_code != 6) {
-                global.logError('')
-                this.on_error('Questions read failed', 'Status code: ' + message.status_code);
+                this._onError('Questions read failed! Status code: ' + message.status_code);
             }
 
-            this._log('_onResponse error code: ' + message.status_code);
+            this._log('Got a response with error code: ' + message.status_code);
             return;
         }
+        
         try {
-this._log('message: ' + message);
-/*
-for (let p in message) {
-    this._log('property ' + p + ' = ' + message[p]);
-}
-*/
-
-if (message.response_body.data) {
-    this._log('data exists!');
-} else {
-    this._log('data does not exists!');
-}
-this._log('This never shows');
-
-this._log('message.response_body.data: ' + message.response_body.data);
             let questions = this._parseJsonResponse(message);
-            // questions contains a document with one element "items" which is 
+            
+            // "questions" contains a document with one element "items" which is 
             // an array of subdocuments 
-            this._log('The answer is: ' + questions);
+this._log('The answer is: ' + questions);
             this._questions.concat(questions.items);
 
             this._numLoadedTags++;
@@ -136,11 +135,7 @@ this._log('message.response_body.data: ' + message.response_body.data);
                 this._callback(this._questions);
             }
         } catch (e) {
-            global.log('Retrieving questions data failed: ' + e);
-            for (let p in e) {
-                global.log(p + ': ' + e[p]);
-            }
-            global.logError('Retrieving questions data failed:', e);
+            this._onError('Retrieving questions data failed: ' + e);
         }
     },
 

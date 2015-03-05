@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Generator: IcoMoon.io -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   fill="#000000"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="stackoverflow.svg"
+   inkscape:export-filename="/home/higuaro/workspaces/aptana/stackoverflow-tag-notiffier@cinnamon.org/stackoverflow.png"
+   inkscape:export-xdpi="4.3084092"
+   inkscape:export-ydpi="4.3084092">
+  <metadata
+     id="metadata73">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs71" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1028"
+     id="namedview69"
+     showgrid="false"
+     inkscape:zoom="0.65186406"
+     inkscape:cx="474.07877"
+     inkscape:cy="308.12695"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <rect
+     style="fill:#000000;fill-opacity:1;stroke:none"
+     id="rect3820"
+     width="668.46021"
+     height="668.46021"
+     x="-66.536247"
+     y="-103.7305"
+     ry="57.599743" />
+  <path
+     d="m 524.2725,284.71657 0,192 -512,0 0,-192 64,0 0,128 384,0 0,-128 z m -416,32 320,0 0,64 -320,0 z m 7.576,-69.267 13.849,-62.482 312.416,69.248 -13.849,62.482 z m 36.253,-128.454 27.046,-58.003 290.016,135.232 -27.046,58.003 z m 356.032,26.459 -38.961,50.775 -253.873,-194.8039999 28.168,-36.7090001 12.24149,-13.80656 16.88051,13.80656 z"
+     id="path67"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="ccccccccccccccccccccccccccccccc"
+     style="fill:#ffffff;fill-opacity:1" />
+</svg>

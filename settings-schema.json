@@ -1,0 +1,23 @@
+{
+    "general": {
+                  "type": "header",
+                  "description": "General Settings"
+               },
+
+    "txtTagList": {
+                     "type": "entry",
+                     "description": "Tags of interest for new questions: ",
+                     "default": "c, java, bash, javascript",
+                     "tooltip": "Comma-separated list of tags for new questions that you are interested in"
+                  },
+
+    "scaQueryFrecuency": {
+                           "type": "scale",
+                             "default": 5,
+                             "min": 2,
+                             "max": 60,
+                             "step": 1,
+                             "description": "Query interval (minutes): ",
+                             "tooltip": "Change the amount of time between every check for new questions"
+                         }
+}

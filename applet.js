@@ -1,12 +1,6 @@
-// Allows import of other files, e.g:
-// const StackExchange = imports.stackexchange; imports file "stackexchange.js"
-// global.log(imports.ui.appletManager.appletMeta["stackoverflow-tag-notifier@higuaro"].path);
-// global.log(imports.searchPath);
-// const AppletPath = imports.ui.appletManager.appletMeta["stackoverflow-tag-notifier@higuaro"].path;
-// if (imports.searchPath.indexOf(AppletPath) === -1) {
-//    imports.searchPath.push(AppletPath);
-//}
 
+// Allows importing other files using the following:
+//   const StackExchange = imports.stackexchange; // imports file "stackexchange.js"
 imports.searchPath.push( imports.ui.appletManager.appletMeta["stackoverflow-questions-notifier@higuaro"].path );
 
 // gettext support (although I don't use it here)
@@ -26,11 +20,10 @@ const Main = imports.ui.main;
 const Tooltips = imports.ui.tooltips;
 const Settings = imports.ui.settings;
 
-const StackExchange=imports.github;
+const StackExchange=imports.stackexchange;
 
 const APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon.png';
 const TAG_SEPARATOR = ',';
-const   = 60000;
 
 
 /* Main */
