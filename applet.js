@@ -24,6 +24,7 @@ const Settings = imports.ui.settings;
 let StackExchange;
 
 const APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon.png';
+const DISABLED_APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon_disabled.png';
 const TAG_SEPARATOR = ',';
 const MINUTE  = 60000;
 
@@ -41,7 +42,7 @@ function main(metadata, orientation, instance_id) {
 
 /* Constructor */
 function MyApplet(metadata, orientation, instance_id) {
-    this._debugEnabled = true;
+    this._debugEnabled = false;
     this._watchingEnabled = true;
     this._init(metadata, orientation, instance_id);
 }
@@ -59,20 +60,34 @@ MyApplet.prototype = {
         
         try {
             this.set_applet_icon_path(APPLET_ICON);
-            
-            let that = this;
-            this.on_applet_removed_from_panel(function() {
-                that._stopTimer();
-            });
-
             this.set_applet_tooltip(_('Click here to disable question watching'));
 
-            this._startTimer();
+            this._onTimer();
+
         } catch (e) {
             global.logError(e);
         }
     },
 
+    on_applet_removed_from_panel: function(event) {
+        this._log('Removing the applet from the panel');
+        this._stopTimer();
+    },
+
+    on_applet_clicked: function(event) {
+        this._log('Click event');
+        this._watchingEnabled = !this._watchingEnabled;
+        
+        if (!this._watchingEnabled) {
+            this._log('Questions checking disabled');
+            this.set_applet_icon_path(DISABLED_APPLET_ICON);
+            this._stopTimer();
+        } else {
+            this._log('Checking for questions again...');
+            this.set_applet_icon_path(APPLET_ICON);
+            this._startTimer();
+        }
+    },
 
     _bindSettings: function(metadata, instance_id) {
         // Create the settings object 
@@ -97,25 +112,25 @@ MyApplet.prototype = {
     _createStackOverflowApiObject: function() {
         var options = {};
         options.site = 'stackoverflow';
-        options.debug = true;
+        options.debug = this._debugEnabled;
 
         return new StackExchange.StackExchange(options);
     },
 
-    _log: function() {
+    _log: function(msg) {
         if (this._debugEnabled) { 
-            global.log.apply(global, arguments);
+            global.log(msg);
         }
     },
-    
+
     _startTimer: function() {
         this._log('Starting timer...');
-        
+
         let that = this;
-        this._timerId = Mainloop.timeout_add(this._timeout * MINUTE, function() {
+        let timeout = this._getTimeoutSetting();
+        this._timerId = Mainloop.timeout_add(timeout * MINUTE, function() {
             that._onTimer();
-            that._startTimer();
-        });         
+        });
     },
     
     _stopTimer: function() {
@@ -128,7 +143,8 @@ MyApplet.prototype = {
     },
     
     _onTimer: function() {
-        this._log('A timer event got fired');
+        var d = new Date();
+        this._log('A timer event got fired: ' + d.getHours() + ':' + d.getMinutes());
         this.checkNewQuestions();
     },
     
@@ -143,26 +159,12 @@ MyApplet.prototype = {
         var that = this;
         questions.forEach(function(question) {
             // Show a notification box for every new question
-            let title = question.title;
-            if (question.is_answered) {
-                title = '\u2714 ' + title;
-            }
-            let body = question.link + '\n\n'; 
-            body += 'Asked by: ' + question.owner.display_name + ' [rep: '
-                     + question.owner.reputation + ']\n';
-            body += 'Question votes: ' + question.score + '\n\n';
-            body += 'Tags: ';
-            for (let i = 0; i < question.tags.length; i++) { 
-                body += question.tags[i];
-                if (i < question.tags.length - 1) {
-                    body += ', ';
-                }
-            }
-            
-            let command = 'notify-send -t 5 --icon="' + APPLET_ICON + '" "' + title + '" "' + body + '"';
-            that._log('Command', command);
+            let command = StackExchange.StackExchange.getQuestionPopupCommand(APPLET_ICON, question);
+            that._log('Command: ' + command);
             Util.spawnCommandLine(command);
         });
+        this._stopTimer();
+        this._startTimer();
     },
 
     _onSettingsChanged: function() {
@@ -170,6 +172,10 @@ MyApplet.prototype = {
         this._readSettingsValues();
         this._stopTimer();
         this._startTimer();
+    },
+    
+    _getTimeoutSetting: function() {
+        return parseInt(this._settings.getValue('scaQueryFrecuency'), 10) || 5;
     },
     
     _readSettingsValues: function() {
@@ -199,7 +205,7 @@ MyApplet.prototype = {
         this._log('The new tag list is: ' + tags);
         this._stackoverflow.setTagList(tags);
 
-        let timeout = parseInt(this._settings.getValue('scaQueryFrecuency'), 10)
+        let timeout = this._getTimeoutSetting();
         this._stackoverflow.setTimeout(timeout);
         this._log('The new timeout is:' + timeout);
     }

@@ -34,6 +34,27 @@ function StackExchange(options) {
 }
 
 
+StackExchange.getQuestionPopupCommand = function(iconPath, question) {
+    let title = question.title;
+    if (question.is_answered) {
+        title = '\u2714 ' + title;
+    }
+    let body = question.link + '\n'; 
+    body += 'Question votes: <b>' + question.score + '</b>\n';
+    body += 'Tags: ';
+    for (let i = 0; i < question.tags.length; i++) { 
+        body += '<b>' + question.tags[i] + '</b>';
+        if (i < question.tags.length - 1) {
+            body += ', ';
+        }
+    }
+    body += '\nAsked by: <b>' + question.owner.display_name + '</b> [rep: '
+             + question.owner.reputation + ']\n';
+    
+
+    return 'notify-send -t 5 --icon="' + iconPath + '" "' + title + '" "' + body + '"';
+}
+
 StackExchange.prototype = {
     constructor: StackExchange,
 
@@ -68,7 +89,7 @@ StackExchange.prototype = {
     },
 
     loadNewQuestions: function(callback) {
-this._log('Loading new questions from the site...');
+        this._log('Loading new questions...');
 
         let fromDate = this._getFromDateParameter();
 
@@ -90,7 +111,7 @@ this._log('Loading new questions from the site...');
             // Form the query for the tag
             let url = questionUrl + '&tagged=' + this._tags[i];
 
-this._log('url: ' + url);
+            this._log('url: ' + url);
 
             let message = Soup.Message.new('GET', url);
 
