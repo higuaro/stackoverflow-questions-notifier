@@ -1,7 +1,7 @@
 
 // Allows importing other files using the following:
 //   const StackExchange = imports.stackexchange; // imports file "stackexchange.js"
-// imports.searchPath.push( imports.ui.appletManager.appletMeta["stackoverflow-questions-notifier@higuaro"].path );
+ imports.searchPath.push( imports.ui.appletManager.appletMeta["stackoverflow-questions-notifier@higuaro"].path );
 
 // gettext support (although I don't use it here)
 const Mainloop = imports.mainloop;
@@ -20,8 +20,7 @@ const Main = imports.ui.main;
 const Tooltips = imports.ui.tooltips;
 const Settings = imports.ui.settings;
 
-// const StackExchange = imports.stackexchange;
-let StackExchange;
+const StackExchange = imports.stackexchange;
 
 const APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon.png';
 const DISABLED_APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon_disabled.png';
@@ -30,14 +29,7 @@ const MINUTE  = 60000;
 
 /* Main */
 function main(metadata, orientation, instance_id) {
-    let myModule = imports.ui.appletManager.applets[metadata.uuid];
-
-    StackExchange = myModule.stackexchange;
-
-//    global.log('StackOverflow object = ', StackOverflow);
-    let myApplet = new MyApplet(metadata, orientation, instance_id)
-
-    return myApplet;
+    return new MyApplet(metadata, orientation, instance_id);
 }
 
 /* Constructor */
@@ -59,11 +51,8 @@ MyApplet.prototype = {
         this._readSettingsValues();
         
         try {
-            this.set_applet_icon_path(APPLET_ICON);
-            this.set_applet_tooltip(_('Click here to disable question watching'));
-
-            this._onTimer();
-
+            this.enableApplet();
+            this.startTimer();
         } catch (e) {
             global.logError(e);
         }
@@ -71,21 +60,30 @@ MyApplet.prototype = {
 
     on_applet_removed_from_panel: function(event) {
         this._log('Removing the applet from the panel');
-        this._stopTimer();
+        this.stopTimer();
+    },
+
+    disableApplet: function() {
+        this.set_applet_icon_path(DISABLED_APPLET_ICON);
+        this.set_applet_tooltip(_('Click here to turn off question notifications'));
+    },
+
+    enableApplet: function() {
+        this.set_applet_icon_path(APPLET_ICON);
+        this.set_applet_tooltip(_('Click here to turn on question notifications'));
     },
 
     on_applet_clicked: function(event) {
-        this._log('Click event');
         this._watchingEnabled = !this._watchingEnabled;
-        
-        if (!this._watchingEnabled) {
+
+        this.stopTimer();
+        if (this._watchingEnabled) {
             this._log('Questions checking disabled');
-            this.set_applet_icon_path(DISABLED_APPLET_ICON);
-            this._stopTimer();
+            this.enableApplet();
+            this.startTimer();
         } else {
-            this._log('Checking for questions again...');
-            this.set_applet_icon_path(APPLET_ICON);
-            this._startTimer();
+            this._log('Questions checking enabled');
+            this.disableApplet();
         }
     },
 
@@ -98,15 +96,15 @@ MyApplet.prototype = {
     
         this._settings.bindProperty(Settings.BindingDirection.IN,   // The binding direction - IN means we only listen for changes from this applet
                          'txtTagList',                              // The key of the UI control associated with the setting in the "settings-schema.json" file
-                         'txtTagList',                              // string of the applet property
-                         this._onSettingsChanged,
+                         'txtTagList',                              // name that is going to be used as the applet property
+                         this.onSettingsChanged,
                          null);
     
         this._settings.bindProperty(Settings.BindingDirection.IN,
                          'scaQueryFrecuency',
                          'scaQueryFrecuency',
-                         this._onSettingsChanged,
-                         null);
+                         this.onSettingsChanged,
+                         null);                                                                        
     },
 
     _createStackOverflowApiObject: function() {
@@ -123,17 +121,17 @@ MyApplet.prototype = {
         }
     },
 
-    _startTimer: function() {
+    startTimer: function() {
         this._log('Starting timer...');
 
         let that = this;
         let timeout = this._getTimeoutSetting();
         this._timerId = Mainloop.timeout_add(timeout * MINUTE, function() {
-            that._onTimer();
+            that.onTimer();
         });
     },
     
-    _stopTimer: function() {
+    stopTimer: function() {
         if (this._timerId) {
             // stop the current running timer
             this._log('Stopping timer...');
@@ -142,9 +140,7 @@ MyApplet.prototype = {
         }        
     },
     
-    _onTimer: function() {
-        var d = new Date();
-        this._log('A timer event got fired: ' + d.getHours() + ':' + d.getMinutes());
+    onTimer: function() {
         this.checkNewQuestions();
     },
     
@@ -163,21 +159,21 @@ MyApplet.prototype = {
             that._log('Command: ' + command);
             Util.spawnCommandLine(command);
         });
-        this._stopTimer();
-        this._startTimer();
+        this.stopTimer();
+        this.startTimer();
     },
 
-    _onSettingsChanged: function() {
+    onSettingsChanged: function() {
         global.log('Settings have changed!');
+        this.stopTimer();
         this._readSettingsValues();
-        this._stopTimer();
-        this._startTimer();
+        this.startTimer();
     },
-    
+
     _getTimeoutSetting: function() {
         return parseInt(this._settings.getValue('scaQueryFrecuency'), 10) || 5;
     },
-    
+
     _readSettingsValues: function() {
         this._log('Reading settings...');
         let txtTagList = this._settings.getValue('txtTagList');
@@ -185,7 +181,7 @@ MyApplet.prototype = {
         let tags = txtTagList.split(TAG_SEPARATOR).map(function(tag) { 
              return tag.trim();
         });
-        
+
         // Remove duplicated tags
         tags = tags.reduce(function(prev, current) {
             let exists = false;
@@ -208,5 +204,21 @@ MyApplet.prototype = {
         let timeout = this._getTimeoutSetting();
         this._stackoverflow.setTimeout(timeout);
         this._log('The new timeout is:' + timeout);
+    },
+
+    onOpenStackoverflowPressed: function(event)  {
+        this._openUrlInBrowser('http://stackoverflow.com/');
+    },
+
+    onOpenCinnamonHomePressed: function(event) { 
+        this._openUrlInBrowser('http://cinnamon-spices.linuxmint.com/applets/');    
+    },
+
+    onOpenDevPagePressed: function(event) {
+        this._openUrlInBrowser('http://geekofficedog.blogspot.com/');
+    },
+
+    _openUrlInBrowser: function(url) {
+        Util.spawnCommandLine("xdg-open " + url);
     }
 };

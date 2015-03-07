@@ -33,9 +33,14 @@ function StackExchange(options) {
     }
 }
 
-
+// "static" method to generate a notification command from a given question 
 StackExchange.getQuestionPopupCommand = function(iconPath, question) {
     let title = question.title;
+    
+    // filter title 
+    title = title.replace(/&#39;/g, '\'');
+    title = title.replace(/&quot;/g, '"');
+    
     if (question.is_answered) {
         title = '\u2714 ' + title;
     }
@@ -50,7 +55,6 @@ StackExchange.getQuestionPopupCommand = function(iconPath, question) {
     }
     body += '\nAsked by: <b>' + question.owner.display_name + '</b> [rep: '
              + question.owner.reputation + ']\n';
-    
 
     return 'notify-send -t 5 --icon="' + iconPath + '" "' + title + '" "' + body + '"';
 }
@@ -117,20 +121,21 @@ StackExchange.prototype = {
 
             let that = this;
             this._httpSession.queue_message(message, function(session, message) {
-                that._onResponse(session, message);
+                that.onResponse(session, message);
             });
         }
     },
 
-    _onError: function(msg) {
+    onError: function(msg) {
         global.logError(msg);
+        Util.spawnCommandLine('notify-send -t 5 --icon=error "Stackexchange API: An error ocurred" "' + msg + '\n\nCheck the log for more information"');
     },
 
-    _onResponse: function(session, message) {
+    onResponse: function(session, message) {
         if (message.status_code != 200) {
             // ignore error codes 6 and 7 and 401
             if (message.status_code != 401 && message.status_code != 7 && message.status_code != 6) {
-                this._onError('Questions read failed! Status code: ' + message.status_code);
+                this.onError('Questions read failed! Status code: ' + message.status_code);
             }
 
             this._log('Got a response with error code: ' + message.status_code);
@@ -160,7 +165,7 @@ StackExchange.prototype = {
                 this._callback(questions);
             }
         } catch (e) {
-            this._onError('Retrieving questions data failed: ' + e);
+            this.onError('Retrieving questions data failed: ' + e);
         }
     },
 

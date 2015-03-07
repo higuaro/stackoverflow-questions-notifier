@@ -14,10 +14,35 @@
     "scaQueryFrecuency": {
                            "type": "scale",
                              "default": 5,
-                             "min": 2,
+                             "min": 1,
                              "max": 60,
                              "step": 1,
                              "description": "Query interval (minutes): ",
                              "tooltip": "Change the amount of time between every check for new questions"
-                         }
+                         },
+                         
+    "separator" : {
+                     "type" : "separator"
+                  },
+
+    "btnOpenStackoverflow" : {
+                                "type" : "button",
+                                "description" : "Visit Stackoverflow",
+                                "callback" : "onOpenStackoverflowPressed",
+                                "tooltip" : "Open stackoverflow.com"
+                             },
+                  
+    "btnOpenCinnamon" : {
+                            "type" : "button",
+                            "description" : "Visit Cinnamon Applet Home",
+                            "callback" : "onOpenCinnamonHomePressed",
+                            "tooltip" : "Open cinnamon.com - rate the applet"
+                        },
+    
+    "btnOpenDevPage" : {
+                           "type" : "button",
+                           "description" : "Visit Developer Page",
+                           "callback" : "onOpenDevPagePressed",
+                           "tooltip" : "Open geekofficedog.blogspot.com"
+                       }
 }
