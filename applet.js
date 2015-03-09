@@ -65,12 +65,12 @@ MyApplet.prototype = {
 
     disableApplet: function() {
         this.set_applet_icon_path(DISABLED_APPLET_ICON);
-        this.set_applet_tooltip(_('Click here to turn off question notifications'));
+        this.set_applet_tooltip(_('Click here to turn on question notifications'));
     },
 
     enableApplet: function() {
         this.set_applet_icon_path(APPLET_ICON);
-        this.set_applet_tooltip(_('Click here to turn on question notifications'));
+        this.set_applet_tooltip(_('Click here to turn off question notifications'));
     },
 
     on_applet_clicked: function(event) {
@@ -78,11 +78,12 @@ MyApplet.prototype = {
 
         this.stopTimer();
         if (this._watchingEnabled) {
-            this._log('Questions checking disabled');
+            this._log('Questions checking enabled');
             this.enableApplet();
+
             this.startTimer();
         } else {
-            this._log('Questions checking enabled');
+            this._log('Questions checking disabled');
             this.disableApplet();
         }
     },
