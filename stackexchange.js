@@ -1,7 +1,6 @@
 const Soup = imports.gi.Soup;
 
 const USER_AGET = 'cinnamon';
-const API_ROOT = 'https://api.stackexchange.com/2.2/';
 const MINUTE  = 60000;
 
 function StackExchange(options) {
@@ -11,6 +10,9 @@ function StackExchange(options) {
     // The stack exchange api object is general, the "site" parameter will
     // dictates which of the stackexchange sites to use 
     this._site = options.site;
+
+    // this._key = options.key;
+    this._key = undefined;
 
     // If given in the options, set the tag list 
     this.setTagList(options.tags);
@@ -32,6 +34,8 @@ function StackExchange(options) {
         throw 'StackExchange: Failed adding features. Details: ' + e;
     }
 }
+
+StackExchange.API_ROOT = 'https://api.stackexchange.com/2.2/';
 
 // "static" method to generate a notification command from a given question 
 StackExchange.getQuestionPopupCommand = function(iconPath, question) {
@@ -92,14 +96,28 @@ StackExchange.prototype = {
         return Math.round(time / 1000);
     },
 
-    loadNewQuestions: function(callback) {
+    _createBaseUrl: function() {
+        let fromDate = this._getFromDateParameter();
+        let baseUrl = StackExchange.API_ROOT + 'questions?order=desc&sort=creation&site=stackoverflow&fromdate=' + fromDate;
+        
+        if (this._key) {
+            baseUrl += '&key=' + this._key;
+        }
+    
+        return baseUrl;
+    },
+    
+    loadNewQuestions: function(onSuccessCallback, onGeneralErrorCallback, onThrottleErrorCallback) {
         this._log('Loading new questions...');
 
-        let fromDate = this._getFromDateParameter();
-
-        let questionUrl = API_ROOT + 'questions?order=desc&sort=creation&site=stackoverflow&fromdate=' + fromDate;
+        let questionUrl = this._createBaseUrl();
 
         let numTags = this._tags.length;
+
+        // Clamp the number of tags        
+        if (numTags > 10) {
+            numTags = 10;
+        }
 
         // Empty the questions array
         this._questions = [];
@@ -107,9 +125,11 @@ StackExchange.prototype = {
         // Reset the number of loaded tags
         this._numLoadedTags = 0;
 
-        // Hold the callback to execute after the reading is done 
-        this._callback = callback;
-
+        // Hold a reference to the callbacks
+        this._successCallback = onSuccessCallback;
+        this._errorCallback = onGeneralErrorCallback;
+        this._throttleErrorCallback = onThrottleErrorCallback;
+        
         // For every tag
         for (let i = 0; i < numTags; i++) { 
             // Form the query for the tag
@@ -131,14 +151,32 @@ StackExchange.prototype = {
         Util.spawnCommandLine('notify-send -t 5 --icon=error "Stackexchange API: An error ocurred" "' + msg + '\n\nCheck the log for more information"');
     },
 
+
+    _handleError: function(message) {
+        this._log('Got a response with error code: ' + message.status_code);
+        
+        if (message.status_code == 400) {
+            let error = this._parseJsonResponse(message);
+            if (error && error.error_id === 502) {
+                // Extract retry time from message
+                var res = /more requests available in (\d+) seconds$/.exec(error.error_message);
+                if (res && res.length === 2) {
+                    let cooldownTime = parseInt(res[1]) * 1000;
+                    this._log('You have to wait ' + cooldownTime + ' milliseconds to use the API calls again');
+                    this._throttleErrorCallback(cooldownTime);
+                    return;
+                } 
+            }           
+        } 
+
+        this.onError('Questions read failed! Status code: ' + message.status_code);
+        this._errorCallback(e);
+    },
+    
+
     onResponse: function(session, message) {
         if (message.status_code != 200) {
-            // ignore error codes 6 and 7 and 401
-            if (message.status_code != 401 && message.status_code != 7 && message.status_code != 6) {
-                this.onError('Questions read failed! Status code: ' + message.status_code);
-            }
-
-            this._log('Got a response with error code: ' + message.status_code);
+            this._handleError(message);
             return;
         }
         
@@ -162,10 +200,11 @@ StackExchange.prototype = {
                 let questions = this._prepareQuestions(this._questions);
 
                 // Last, call the callback
-                this._callback(questions);
+                this._successCallback(questions);
             }
         } catch (e) {
             this.onError('Retrieving questions data failed: ' + e);
+            this._errorCallback(e);
         }
     },
 

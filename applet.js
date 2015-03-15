@@ -24,8 +24,11 @@ const StackExchange = imports.stackexchange;
 
 const APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon.png';
 const DISABLED_APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon_disabled.png';
+const WAITING_APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon_waiting.png';
+const ERROR_APPLET_ICON = global.userdatadir + '/applets/stackoverflow-questions-notifier@higuaro/icon_error.png';
 const TAG_SEPARATOR = ',';
 const MINUTE  = 60000;
+const KEY = 'd*vHvq4QJPzmX32nQWspOw((';
 
 /* Main */
 function main(metadata, orientation, instance_id) {
@@ -34,8 +37,9 @@ function main(metadata, orientation, instance_id) {
 
 /* Constructor */
 function MyApplet(metadata, orientation, instance_id) {
-    this._debugEnabled = false;
-    this._watchingEnabled = true;
+    this._debugEnabled = true;
+    this._checkForQuestions = true;
+    this._cooldownMode = false;
     this._init(metadata, orientation, instance_id);
 }
 
@@ -74,10 +78,15 @@ MyApplet.prototype = {
     },
 
     on_applet_clicked: function(event) {
-        this._watchingEnabled = !this._watchingEnabled;
+        if (this._cooldownMode) {
+            this._log('Click event ignored as cooldown mode is active');
+            return;
+        }
+    
+        this._checkForQuestions = !this._checkForQuestions;
 
         this.stopTimer();
-        if (this._watchingEnabled) {
+        if (this._checkForQuestions) {
             this._log('Questions checking enabled');
             this.enableApplet();
 
@@ -112,6 +121,7 @@ MyApplet.prototype = {
         var options = {};
         options.site = 'stackoverflow';
         options.debug = this._debugEnabled;
+        options.key = KEY;
 
         return new StackExchange.StackExchange(options);
     },
@@ -120,6 +130,49 @@ MyApplet.prototype = {
         if (this._debugEnabled) { 
             global.log(msg);
         }
+    },
+    
+    onGeneralError: function(e) {
+        this.stopTimer();
+        this.set_applet_icon_path(ERROR_APPLET_ICON);
+        global.logError(e);
+        this.set_applet_tooltip(_('An error ocurred during question checking, consult the logs for details'));
+    },
+
+    onThrottleError: function(timeout) {
+        this._cooldownMode = true;
+        this.set_applet_icon_path(WAITING_APPLET_ICON);
+        this._log('Got ' + timeout + ' timeout seconds');
+        let minutes = Math.round(timeout / MINUTE) + 1;
+        this._log('Have to wait ' + minutes + ' minutes before next API call');
+        this.startCooldownTimer(minutes);
+    },
+
+    startCooldownTimer: function(timeout) {
+        this._log('Starting cooldown timer...');
+
+        this._throttleTimeout = timeout;
+        
+        this.set_applet_tooltip(_('Max number of API requests reached, ' + this._throttleTimeout + ' minutes until next question check'));
+
+        let that = this;
+        this._timerId = Mainloop.timeout_add(MINUTE, function() {
+            that.onCooldownTimer();
+        });
+    },
+
+    onCooldownTimer: function() {
+        this._log('Stopping throttle timer...');    
+        this.stopTimer();
+        
+        if (this._throttleTimeout <= 1) {
+            this._cooldownMode = false;
+            this.enableApplet();
+            this.startTimer();
+        } else {
+            this.startCooldownTimer(this._throttleTimeout - 1);
+        }
+        
     },
 
     startTimer: function() {
@@ -131,7 +184,7 @@ MyApplet.prototype = {
             that.onTimer();
         });
     },
-    
+
     stopTimer: function() {
         if (this._timerId) {
             // stop the current running timer
@@ -140,16 +193,26 @@ MyApplet.prototype = {
             this._timerId = 0;
         }        
     },
-    
+
     onTimer: function() {
         this.checkNewQuestions();
     },
-    
+
     checkNewQuestions: function() {
         var that = this;
-        this._stackoverflow.loadNewQuestions(function(questions) {
-            that.showNewQuestions(questions);
-        });        
+        var successCallback = function(questions) {
+            that.showNewQuestions(questions);        
+        }
+        
+        var errorCallback = function(e) {
+            that.onGeneralError(e);
+        }
+        
+        var throttleErrorCallback = function(timeout) {
+            that.onThrottleError(timeout);
+        }
+        
+        this._stackoverflow.loadNewQuestions(successCallback, errorCallback, throttleErrorCallback);        
     },
     
     showNewQuestions: function(questions) {
@@ -165,7 +228,7 @@ MyApplet.prototype = {
     },
 
     onSettingsChanged: function() {
-        global.log('Settings have changed!');
+        this._log('Settings have changed!');
         this.stopTimer();
         this._readSettingsValues();
         this.startTimer();
