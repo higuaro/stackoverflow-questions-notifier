@@ -42,7 +42,7 @@ function StackExchange(options) {
 // Static "alike" declarations
 //////////////////////////////////
 
-StackExchange.API_ROOT = 'https://api878979.stackexchange.com/2.2/';
+StackExchange.API_ROOT = 'https://api.stackexchange.com/2.2/';
 StackExchange.MAX_NUMBER_OF_TAGS_ALLOWED = 10;
 
 // "static method" to generate a notification command from a given question 
@@ -154,6 +154,9 @@ StackExchange.prototype = {
             this._log('url: ' + url);
 
             let message = Soup.Message.new('GET', url);
+            // Add the following property on the fly to the object, 
+            // in case an error occurs, use this to show an error message 
+            message.url = url;
 
             this._httpSession.queue_message(message, responseCallback);
         }
@@ -185,7 +188,7 @@ StackExchange.prototype = {
         if (this._errorCallback) {
             this._errorCallback('Questions read failed! An HTTP error ' + 
                                  message.status_code + ' ocurred trying to ' +
-                                 'reach:\n' + message.uri.path);
+                                 'reach:\n' + message.url);
         }
     },
     
