@@ -3,10 +3,10 @@
 //   const StackExchange = imports.stackexchange; // imports file "stackexchange.js"
  imports.searchPath.push( imports.ui.appletManager.appletMeta["stackoverflow-questions-notifier@higuaro"].path );
 
-// gettext support (although I don't use it here)
 const Mainloop = imports.mainloop;
 const Lang = imports.lang;
 
+// gettext support (although is not used)
 const Gettext = imports.gettext.domain('cinnamon-applets');
 const _ = Gettext.gettext;
 
@@ -61,42 +61,7 @@ MyApplet.prototype = {
             global.logError(e);
         }
     },
-
-    on_applet_removed_from_panel: function(event) {
-        this._log('Removing the applet from the panel');
-        this.stopTimer();
-    },
-
-    disableApplet: function() {
-        this.set_applet_icon_path(DISABLED_APPLET_ICON);
-        this.set_applet_tooltip(_('Click here to turn on question notifications'));
-    },
-
-    enableApplet: function() {
-        this.set_applet_icon_path(APPLET_ICON);
-        this.set_applet_tooltip(_('Click here to turn off question notifications'));
-    },
-
-    on_applet_clicked: function(event) {
-        if (this._cooldownMode) {
-            this._log('Click event ignored as cooldown mode is active');
-            return;
-        }
     
-        this._checkForQuestions = !this._checkForQuestions;
-
-        this.stopTimer();
-        if (this._checkForQuestions) {
-            this._log('Questions checking enabled');
-            this.enableApplet();
-
-            this.startTimer();
-        } else {
-            this._log('Questions checking disabled');
-            this.disableApplet();
-        }
-    },
-
     _bindSettings: function(metadata, instance_id) {
         // Create the settings object 
         this._settings = new Settings.AppletSettings(this, metadata.uuid, instance_id);
@@ -115,125 +80,27 @@ MyApplet.prototype = {
                          'scaQueryFrecuency',
                          this.onSettingsChanged,
                          null);                                                                        
-    },
-
+    },    
+    
     _createStackOverflowApiObject: function() {
-        var options = {};
-        options.site = 'stackoverflow';
-        options.debug = this._debugEnabled;
-        options.key = KEY;
+        try {
+            var options = {};
+            options.site = 'stackoverflow';
+            options.debug = this._debugEnabled;
+            options.key = KEY;
 
-        return new StackExchange.StackExchange(options);
-    },
-
+            return new StackExchange.StackExchange(options);
+        } catch(e) {
+            this.onGeneralError(e);
+        }
+    },   
+    
     _log: function(msg) {
         if (this._debugEnabled) { 
             global.log(msg);
         }
     },
     
-    onGeneralError: function(e) {
-        this.stopTimer();
-        this.set_applet_icon_path(ERROR_APPLET_ICON);
-        global.logError(e);
-        this.set_applet_tooltip(_('An error ocurred during question checking, consult the logs for details'));
-    },
-
-    onThrottleError: function(timeout) {
-        this._cooldownMode = true;
-        this.set_applet_icon_path(WAITING_APPLET_ICON);
-        this._log('Got ' + timeout + ' timeout seconds');
-        let minutes = Math.round(timeout / MINUTE) + 1;
-        this._log('Have to wait ' + minutes + ' minutes before next API call');
-        this.startCooldownTimer(minutes);
-    },
-
-    startCooldownTimer: function(timeout) {
-        this._log('Starting cooldown timer...');
-
-        this._throttleTimeout = timeout;
-        
-        this.set_applet_tooltip(_('Max number of API requests reached, ' + this._throttleTimeout + ' minutes until next question check'));
-
-        let that = this;
-        this._timerId = Mainloop.timeout_add(MINUTE, function() {
-            that.onCooldownTimer();
-        });
-    },
-
-    onCooldownTimer: function() {
-        this._log('Stopping throttle timer...');    
-        this.stopTimer();
-        
-        if (this._throttleTimeout <= 1) {
-            this._cooldownMode = false;
-            this.enableApplet();
-            this.startTimer();
-        } else {
-            this.startCooldownTimer(this._throttleTimeout - 1);
-        }
-        
-    },
-
-    startTimer: function() {
-        this._log('Starting timer...');
-
-        let that = this;
-        let timeout = this._getTimeoutSetting();
-        this._timerId = Mainloop.timeout_add(timeout * MINUTE, function() {
-            that.onTimer();
-        });
-    },
-
-    stopTimer: function() {
-        if (this._timerId) {
-            // stop the current running timer
-            this._log('Stopping timer...');
-            Mainloop.source_remove(this._timerId);
-            this._timerId = 0;
-        }        
-    },
-
-    onTimer: function() {
-        this.checkNewQuestions();
-    },
-
-    checkNewQuestions: function() {
-        var that = this;
-        var successCallback = function(questions) {
-            that.showNewQuestions(questions);        
-        }
-        
-        var errorCallback = function(e) {
-            that.onGeneralError(e);
-        }
-        
-        var throttleErrorCallback = function(timeout) {
-            that.onThrottleError(timeout);
-        }
-        
-        this._stackoverflow.loadNewQuestions(successCallback, errorCallback, throttleErrorCallback);        
-    },
-    
-    showNewQuestions: function(questions) {
-        var that = this;
-        questions.forEach(function(question) {
-            // Show a notification box for every new question
-            let command = StackExchange.StackExchange.getQuestionPopupCommand(APPLET_ICON, question);
-            that._log('Command: ' + command);
-            Util.spawnCommandLine(command);
-        });
-        this.stopTimer();
-        this.startTimer();
-    },
-
-    onSettingsChanged: function() {
-        this._log('Settings have changed!');
-        this.stopTimer();
-        this._readSettingsValues();
-        this.startTimer();
-    },
-
     _getTimeoutSetting: function() {
         return parseInt(this._settings.getValue('scaQueryFrecuency'), 10) || 5;
     },
@@ -269,6 +136,157 @@ MyApplet.prototype = {
         this._stackoverflow.setTimeout(timeout);
         this._log('The new timeout is:' + timeout);
     },
+    
+    _openUrlInBrowser: function(url) {
+        Util.spawnCommandLine('xdg-open ' + url);
+    },
+
+    _getTimeoutString: function(minutes) {
+        let hours = Math.floor(minutes / 60);
+        if (hours) {
+            let minutesAfterHour = minutes % 60;
+            return hours + 'h ' + minutesAfterHour + 'min';
+        }
+        return minutes + 'min';
+    },
+
+    on_applet_removed_from_panel: function(event) {
+        this._log('Removing the applet from the panel');
+        this.stopTimer();
+    },
+
+    disableApplet: function() {
+        this.set_applet_icon_path(DISABLED_APPLET_ICON);
+        this.set_applet_tooltip(_('Click here to turn on\n question notifications'));
+    },
+
+    enableApplet: function() {
+        this.set_applet_icon_path(APPLET_ICON);
+        this.set_applet_tooltip(_('Click here to turn off question notifications'));
+    },
+
+    on_applet_clicked: function(event) {
+        if (this._cooldownMode) {
+            this._log('Click event ignored as cooldown mode is active');
+            return;
+        }
+    
+        this._checkForQuestions = !this._checkForQuestions;
+
+        this.stopTimer();
+        if (this._checkForQuestions) {
+            this._log('Questions checking enabled');
+            this.enableApplet();
+
+            this.startTimer();
+        } else {
+            this._log('Questions checking disabled');
+            this.disableApplet();
+        }
+    },
+    
+    onGeneralError: function(e) {
+        this._log('An error ocurred: ' + e);
+        this.stopTimer();        
+        this._checkForQuestions = false;
+        this.set_applet_icon_path(ERROR_APPLET_ICON);
+        global.logError(e);
+        this.set_applet_tooltip(_('An error ocurred, consult the logs for details'));
+        Util.spawnCommandLine('notify-send -t 5 --icon=error "Stackoverflow Notifier Applet - Unexpected Error" "Error details:\n' + e + '"');
+    },
+
+    onThrottleError: function(timeout) {
+        this._cooldownMode = true;
+        this.set_applet_icon_path(WAITING_APPLET_ICON);
+        this._log('Got ' + timeout + ' timeout seconds');
+        let minutes = Math.round(timeout / MINUTE) + 1;
+        this._log('Have to wait ' + minutes + ' minutes before next API call');
+        this.startCooldownTimer(minutes);
+    },
+
+    startCooldownTimer: function(timeout) {
+        this._throttleTimeout = timeout;
+        
+        this.set_applet_tooltip(_('Max # of API calls reached, service will be back after ' + 
+                                   this._getTimeoutString(this._throttleTimeout)));
+
+        let timerCallback = Lang.bind(this, function() {
+            this.onCooldownTimer();
+        });
+        
+        this._timerId = Mainloop.timeout_add(MINUTE, timerCallback);
+    },
+
+    onCooldownTimer: function() {
+        this.stopTimer();
+        
+        if (this._throttleTimeout <= 1) {
+            this._cooldownMode = false;
+            this.enableApplet();
+            this.startTimer();
+        } else {
+            this.startCooldownTimer(this._throttleTimeout - 1);
+        }
+    },
+
+    startTimer: function() {
+        this._log('Starting timer...');
+
+        let timeout = this._getTimeoutSetting();
+        let timerCallback = Lang.bind(this, function() {
+            this.onTimer();
+        });
+        this._timerId = Mainloop.timeout_add(timeout * MINUTE, timerCallback);
+    },
+
+    stopTimer: function() {
+        if (this._timerId) {
+            // stop the current running timer
+            this._log('Stopping timer...');
+            Mainloop.source_remove(this._timerId);
+            this._timerId = 0;
+        }        
+    },
+
+    onTimer: function() {
+        this.checkNewQuestions();
+    },
+
+    checkNewQuestions: function() {
+        let successCallback = Lang.bind(this, function(questions) {
+            this.showNewQuestions(questions);
+        });
+        
+        let errorCallback = Lang.bind(this, function(e) {
+            this.onGeneralError(e);
+        });
+        
+        let throttleErrorCallback = Lang.bind(this, function(timeout) {
+            this.onThrottleError(timeout);
+        });
+
+        this._stackoverflow.loadNewQuestions(successCallback, errorCallback, throttleErrorCallback);        
+    },
+    
+    showNewQuestions: function(questions) {
+        let showQuestionPopup = Lang.bind(this, function(question) {
+            // Show a notification box for every new question
+            let command = StackExchange.StackExchange.getQuestionPopupCommand(APPLET_ICON, question);
+            this._log('Command: ' + command);
+            Util.spawnCommandLine(command);
+        });
+
+        questions.forEach(showQuestionPopup);
+        this.stopTimer();
+        this.startTimer();
+    },
+
+    onSettingsChanged: function() {
+        this._log('Settings have changed!');
+        this.stopTimer();
+        this._readSettingsValues();
+        this.startTimer();
+    },
 
     onOpenStackoverflowPressed: function(event)  {
         this._openUrlInBrowser('http://stackoverflow.com/');
@@ -280,9 +298,5 @@ MyApplet.prototype = {
 
     onOpenDevPagePressed: function(event) {
         this._openUrlInBrowser('http://geekofficedog.blogspot.com/');
-    },
-
-    _openUrlInBrowser: function(url) {
-        Util.spawnCommandLine("xdg-open " + url);
     }
 };

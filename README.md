@@ -21,10 +21,12 @@ Tested on Cinnamon 2.4.6, Linux Mint 17.1
 # Change Log
 
 ### v 1.0
-* Show popup notifications every n minutes with new questions under certain tags
-* Can be disabled/enabled by clicking on the applet icon
+* Show popup notifications every n minutes with new questions posted under certain tags
+* Let the user disabled/enabled notifications by clicking on the applet icon
 * Notifications contain a link for the question 
-* The applet configuration dialog lets you set the list of tags (labels separated by `,`)
+* The applet configuration dialog lets the user set the list of tags (labels separated by `,`)
+* If the maximum number of request to the API site is reached, the applet will block  
+  itself until the service throttle time is restore again 
 
 # About 
 
