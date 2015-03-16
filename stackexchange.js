@@ -13,8 +13,7 @@ function StackExchange(options) {
     // dictates which of the stackexchange sites to use 
     this._site = options.site;
 
-    // this._key = options.key;
-    this._key = undefined;
+    this._key = options.key;
 
     // If given in the options, set the tag list 
     this.setTagList(options.tags);
