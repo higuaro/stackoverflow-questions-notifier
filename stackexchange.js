@@ -165,9 +165,51 @@ StackExchange.prototype = {
         global.logError(msg);
     },
 
+    _isSoupError: function(errorNumber) {
+        if (message.status_code < 12 && message.status_code > 0) {
+            return true;
+        }
+        
+        if (message.status_code == 401 || message.status_code == 405) {        
+            return true;
+        }
+        
+        return false;
+    },
+
+    _getSoupErrorName: function(errorNumber) {
+        switch (errorNumber) {
+            case 1: return 'SOUP_STATUS_CANCELLED (Message was cancelled locally)';
+            case 2: return 'SOUP_STATUS_CANT_RESOLVE (Unable to resolve destination host name)';
+            case 3: return 'SOUP_STATUS_CANT_RESOLVE_PROXY (Unable to resolve proxy host name)';
+            case 4: return 'SOUP_STATUS_CANT_CONNECT (Unable to connect to remote host)';
+            case 5: return 'SOUP_STATUS_CANT_CONNECT_PROXY (Unable to connect to proxy)';
+            case 6: return 'SOUP_STATUS_SSL_FAILED (SSL/TLS negotiation failed)';
+            case 7: return 'SOUP_STATUS_IO_ERROR (A network error occurred, or the other end closed the connection unexpectedly)';
+            case 8: return 'SOUP_STATUS_MALFORMED (Malformed data)';
+            case 9: return 'UP_STATUS_TRY_AGAIN';
+            case 10: return 'SOUP_STATUS_TOO_MANY_REDIRECTS (There were too many redirections)';            
+            case 11: return 'SOUP_STATUS_TOO_MANY_REDIRECTS (There were too many redirections)';
+            case 401: return 'SOUP_STATUS_UNAUTHORIZED (Unauthorized (authentication is required and has failed or has not yet been provided)';
+            case 405: return 'SOUP_STATUS_METHOD_NOT_ALLOWED (Method Not Allowed)';
+        }
+    },  
+
     _handleError: function(message) {
         this._log('Got a response with error code: ' + message.status_code);
         
+        if (this._isSoupError(message.status_code)) {
+            let errorName = this._getSoupErrorName(message.status_code);
+            
+            if (this._errorCallback) {
+                this._errorCallback('Questions read failed! An error ' + 
+                                     message.status_code + ' ' + 
+                                     erroName + ' ocurred trying to ' +
+                                     'reach:\n' + message.url);
+            }
+            return;
+        }
+
         if (message.status_code == 400) {
             let error = this._parseJsonResponse(message);
             if (error && error.error_id === 502) {

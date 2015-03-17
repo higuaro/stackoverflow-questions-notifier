@@ -37,7 +37,7 @@ function main(metadata, orientation, instance_id) {
 
 /* Constructor */
 function MyApplet(metadata, orientation, instance_id) {
-    this._debugEnabled = true;
+    this._debugEnabled = false;
     this._checkForQuestions = true;
     this._cooldownMode = false;
     this._init(metadata, orientation, instance_id);
@@ -293,7 +293,7 @@ MyApplet.prototype = {
     },
 
     onOpenCinnamonHomePressed: function(event) { 
-        this._openUrlInBrowser('http://cinnamon-spices.linuxmint.com/applets/');    
+        this._openUrlInBrowser('http://cinnamon-spices.linuxmint.com/applets/view/224');
     },
 
     onOpenDevPagePressed: function(event) {
