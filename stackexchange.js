@@ -19,6 +19,9 @@ function StackExchange(options) {
     this.setTagList(options.tags);
 
     this._questions = [];
+    
+    // Keep id of the previous questions to avoid repeated notifications
+    this._previousQuestionsIds = [];
 
     try {
         this._httpSession = new Soup.SessionAsync();
@@ -51,6 +54,9 @@ StackExchange.getQuestionPopupCommand = function(iconPath, question) {
     // filter title 
     title = title.replace(/&#39;/g, '\'');
     title = title.replace(/&quot;/g, '"');
+    title = title.replace(/&amp;/g, '&');
+    title = title.replace(/&gt;/g, '>');
+    title = title.replace(/&lt;/g, '<');
     
     if (question.is_answered) {
         title = '\u2714 ' + title;
@@ -136,8 +142,6 @@ StackExchange.prototype = {
         // Reset the number of loaded tags
         this._numLoadedTags = 0;
 
-
-
         // Hold a reference to the callbacks
         this._successCallback = onSuccessCallback;
         this._errorCallback = onGeneralErrorCallback;
@@ -166,11 +170,11 @@ StackExchange.prototype = {
     },
 
     _isSoupError: function(errorNumber) {
-        if (message.status_code < 12 && message.status_code > 0) {
+        if (errorNumber < 12 && errorNumber > 0) {
             return true;
         }
         
-        if (message.status_code == 401 || message.status_code == 405) {        
+        if (errorNumber == 401 || errorNumber == 405) {
             return true;
         }
         
@@ -197,15 +201,16 @@ StackExchange.prototype = {
 
     _handleError: function(message) {
         this._log('Got a response with error code: ' + message.status_code);
-        
+       
         if (this._isSoupError(message.status_code)) {
             let errorName = this._getSoupErrorName(message.status_code);
-            
+
             if (this._errorCallback) {
-                this._errorCallback('Questions read failed! An error ' + 
-                                     message.status_code + ' ' + 
-                                     erroName + ' ocurred trying to ' +
-                                     'reach:\n' + message.url);
+                let errorMsg = 'Questions read failed! An error ' + 
+                                message.status_code + ' ' + 
+                                errorName + ' ocurred trying to ' +
+                               'reach:\n' + message.url;
+                this._errorCallback(errorMsg);
             }
             return;
         }
@@ -235,6 +240,8 @@ StackExchange.prototype = {
     
 
     onResponse: function(session, message) {
+        this._log('onResponse: message.status_code = ' + message.status_code);
+
         if (message.status_code != 200) {
             this._handleError(message);
             return;
@@ -269,6 +276,8 @@ StackExchange.prototype = {
     _mergeAndSortQuestions: function(questions) {
         // Merge those questions that match several tags
         // ( This fancy reduce stuff is O(n^2) )
+        var that = this;
+        
         questions = questions.reduce(function(prev, cur) {
             // Iterate over "prev" to see if there are duplicated questions
             let size = prev.length;
@@ -279,12 +288,28 @@ StackExchange.prototype = {
                     break;
                 }
             }
+
+            // Check previous questions to see if there is any repeated question id            
+            size = that._previousQuestionsIds.length;
+            for (let i = 0; i < size; i++) {
+                if (cur.question_id == that._previousQuestionsIds[i]) {
+                    founded = true;
+                    break;
+                }
+            }
+            
             if (!founded) {
                 prev.push(cur);
             }
             return prev;
         }, []);
 
+        // Discard the previous questions id's 
+        this._previousQuestionsIds = [];
+        let size = questions.length;
+        for (let i = 0; i < size; i++) {
+            this._previousQuestionsIds[i] = questions[i].question_id;
+        }
         // Sort them by creation_date, older first, newer last
         return questions.sort(function(question1, question2) { 
             return question1.creation_date > question2.creation_date;

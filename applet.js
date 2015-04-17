@@ -37,7 +37,7 @@ function main(metadata, orientation, instance_id) {
 
 /* Constructor */
 function MyApplet(metadata, orientation, instance_id) {
-    this._debugEnabled = false;
+    this._debugEnabled = true;
     this._checkForQuestions = true;
     this._cooldownMode = false;
     this._init(metadata, orientation, instance_id);
@@ -187,12 +187,15 @@ MyApplet.prototype = {
     
     onGeneralError: function(e) {
         this._log('An error ocurred: ' + e);
-        this.stopTimer();        
-        this._checkForQuestions = false;
-        this.set_applet_icon_path(ERROR_APPLET_ICON);
-        global.logError(e);
-        this.set_applet_tooltip(_('An error ocurred, consult the logs for details'));
-        Util.spawnCommandLine('notify-send -t 5 --icon=error "Stackoverflow Notifier Applet - Unexpected Error" "Error details:\n' + e + '"');
+        this.stopTimer();
+        
+        if (this._checkForQuestions) {
+            this._checkForQuestions = false;
+            this.set_applet_icon_path(ERROR_APPLET_ICON);
+            global.logError(e);
+            this.set_applet_tooltip(_('An error ocurred, click to start checking questions again'));
+            Util.spawnCommandLine('notify-send -t 5 --icon=error "Stackoverflow Notifier Applet - Unexpected Error" "Error details:\n' + e + '"');
+        }
     },
 
     onThrottleError: function(timeout) {
