@@ -8,13 +8,13 @@
                      "type": "entry",
                      "description": "Tags of interest for new questions (max 10 tags): ",
                      "default": "c, java, bash, javascript",
-                     "tooltip": "Comma-separated list of tags for new questions that you are interested in (tags beyond 10 are ignored)"
+                     "tooltip": "Comma-separated list of tags for new questions that you are interested in (tags beyond the 10th are ignored)"
                   },
 
     "scaQueryFrecuency": {
                            "type": "scale",
                              "default": 5,
-                             "min": 1,
+                             "min": 2,
                              "max": 60,
                              "step": 1,
                              "description": "Query interval (minutes): ",

@@ -20,7 +20,16 @@ Tested on Cinnamon 2.4.6, Linux Mint 17.1
 
 # Change Log
 
-### v 1.0
+### v 1.0.3
+* Duplicated questions notification bug solved for good!
+
+### v 1.0.2
+* Minor improvements over duplicated question notifications bug
+
+### v 1.0.1
+* Minor bug fixes: The error messages weren't showing
+
+### v 1.0.0
 * Show popup notifications every n minutes with new questions posted under certain tags
 * Let the user disabled/enabled notifications by clicking on the applet icon
 * Notifications contain a link for the question 

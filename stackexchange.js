@@ -21,6 +21,7 @@ function StackExchange(options) {
     this._questions = [];
     
     // Keep id of the previous questions to avoid repeated notifications
+    this._numServiceCalls = 0;
     this._previousQuestionsIds = [];
 
     try {
@@ -259,12 +260,10 @@ StackExchange.prototype = {
             this._numLoadedTags++;
             
             if (this._numLoadedTags >= this._tags.length) {
-            
                 // If the last tag has been queried successfully, then merge and 
                 // sort the array with the gathered questions
                 let questions = this._mergeAndSortQuestions(this._questions);
 
-                // Last, call the callback
                 this._successCallback(questions);
             }
         } catch (e) {
@@ -292,7 +291,7 @@ StackExchange.prototype = {
             // Check previous questions to see if there is any repeated question id            
             size = that._previousQuestionsIds.length;
             for (let i = 0; i < size; i++) {
-                if (cur.question_id == that._previousQuestionsIds[i]) {
+                if (cur.question_id == that._previousQuestionsIds[i].questionId) {
                     founded = true;
                     break;
                 }
@@ -304,15 +303,32 @@ StackExchange.prototype = {
             return prev;
         }, []);
 
-        // Discard the previous questions id's 
-        this._previousQuestionsIds = [];
+        this._discardPreviousQuestions();
+        
         let size = questions.length;
         for (let i = 0; i < size; i++) {
-            this._previousQuestionsIds[i] = questions[i].question_id;
+            this._previousQuestionsIds.push({
+                questionId: questions[i].question_id,
+                lifeTime: 5
+            });
         }
+
         // Sort them by creation_date, older first, newer last
         return questions.sort(function(question1, question2) { 
             return question1.creation_date > question2.creation_date;
         });
+    },
+    
+    _discardPreviousQuestions: function() {
+        let size = this._previousQuestionsIds.length;
+        this._log('num previous questions left: ' + size);
+        for (let i = size - 1; i >= 0; i--) {
+            this._log('for: this._previousQuestionsIds[' + i + ']: ' + this._previousQuestionsIds[i]);
+            this._previousQuestionsIds[i].lifeTime--;
+
+            if (this._previousQuestionsIds[i].lifeTime <= 0) {
+                this._previousQuestionsIds.splice(i, 1);
+            }
+        }        
     }
 }

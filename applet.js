@@ -37,7 +37,7 @@ function main(metadata, orientation, instance_id) {
 
 /* Constructor */
 function MyApplet(metadata, orientation, instance_id) {
-    this._debugEnabled = true;
+    this._debugEnabled = false;
     this._checkForQuestions = true;
     this._cooldownMode = false;
     this._init(metadata, orientation, instance_id);
@@ -157,12 +157,12 @@ MyApplet.prototype = {
 
     disableApplet: function() {
         this.set_applet_icon_path(DISABLED_APPLET_ICON);
-        this.set_applet_tooltip(_('Click here to turn on\n question notifications'));
+        this.set_applet_tooltip(_('Click here to turn \nquestion notifications on'));
     },
 
     enableApplet: function() {
         this.set_applet_icon_path(APPLET_ICON);
-        this.set_applet_tooltip(_('Click here to turn off question notifications'));
+        this.set_applet_tooltip(_('Click here to turn\nquestion notifications off'));
     },
 
     on_applet_clicked: function(event) {
@@ -286,9 +286,11 @@ MyApplet.prototype = {
 
     onSettingsChanged: function() {
         this._log('Settings have changed!');
-        this.stopTimer();
-        this._readSettingsValues();
-        this.startTimer();
+        if (this._checkForQuestions) {
+            this.stopTimer();
+            this._readSettingsValues();
+            this.startTimer();
+        }
     },
 
     onOpenStackoverflowPressed: function(event)  {
