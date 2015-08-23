@@ -21,7 +21,7 @@ Tested on Cinnamon 2.4.6, Linux Mint 17.1
 # Change Log
 
 ### v 1.0.3
-* Duplicated questions notification bug solved for good!
+* Duplicated notifications bug solved for good!
 
 ### v 1.0.2
 * Minor improvements over duplicated question notifications bug
